@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genetic Code Decoder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:       #f5f3ff;
+            --surface:  #ffffff;
+            --surface2: #faf9fe;
+
+            --dna-bg:   #dbeafe; --dna-border: #93c5fd; --dna-text: #1d4ed8; --dna-label: #3b82f6;
+            --gc-bg:    #fef9c3; --gc-border:  #fde047; --gc-text:  #854d0e; --gc-label:  #ca8a04;
+            --mrna-bg:  #d1fae5; --mrna-border:#6ee7b7; --mrna-text:#065f46; --mrna-label:#10b981;
+            --aa-bg:    #ede9fe; --aa-border:  #c4b5fd; --aa-text:  #4c1d95; --aa-label:  #7c3aed;
+
+            --pill-nonpolar-bg: #ede9fe; --pill-nonpolar-border: #c4b5fd; --pill-nonpolar-text: #5b21b6;
+            --pill-polar-bg:    #d1fae5; --pill-polar-border:    #6ee7b7; --pill-polar-text:    #065f46;
+            --pill-basic-bg:    #dbeafe; --pill-basic-border:    #93c5fd; --pill-basic-text:    #1e40af;
+            --pill-acidic-bg:   #fee2e2; --pill-acidic-border:   #fca5a5; --pill-acidic-text:   #991b1b;
+            --pill-stop-bg:     #fef3c7; --pill-stop-border:     #fcd34d; --pill-stop-text:     #78350f;
+
+            --text:     #1e1b2e;
+            --muted:    #7c6f9a;
+            --border:   #e8e3f5;
+            --shadow:   rgba(109, 93, 168, 0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── HEADER ── */
+        header {
+            background: linear-gradient(135deg, #c7d2fe 0%, #ddd6fe 35%, #fbcfe8 70%, #bae6fd 100%);
+            padding: 2rem 2rem 1.8rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='20' cy='20' r='1.5' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .header-inner {
+            max-width: 1080px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 2rem;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            font-size: clamp(1.7rem, 4vw, 2.6rem);
+            font-weight: 900;
+            color: #3730a3;
+            line-height: 1.1;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        h1 em {
+            font-style: normal;
+            color: #7c3aed;
+        }
+
+        .tagline {
+            font-size: 0.9rem;
+            color: #5b21b6;
+            font-weight: 600;
+            opacity: 0.8;
+            margin-bottom: 1rem;
+        }
+
+        .steps {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .step-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            background: rgba(255,255,255,0.6);
+            border: 1.5px solid rgba(255,255,255,0.9);
+            border-radius: 99px;
+            padding: 0.3rem 0.8rem 0.3rem 0.35rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #4c1d95;
+            backdrop-filter: blur(4px);
+        }
+
+        .step-num {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #7c3aed;
+            color: #fff;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* Flow diagram */
+        .flow {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            flex-shrink: 0;
+        }
+
+        .flow-box {
+            width: 72px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            border: 2px solid;
+        }
+
+        .flow-box.dns     { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+        .flow-box.mrna    { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+        .flow-box.protein { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }
+        .flow-sub { font-size: 0.48rem; opacity: 0.65; margin-top: 2px; letter-spacing: 0.06em; }
+
+        .flow-arrow {
+            width: 28px;
+            height: 2px;
+            background: #a78bfa;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .flow-arrow::after {
+            content: '';
+            position: absolute;
+            right: -1px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 5px solid transparent;
+            border-left: 7px solid #a78bfa;
+        }
+
+        /* ── MAIN ── */
+        main {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 1.8rem;
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 1.4rem;
+            align-items: start;
+        }
+
+        /* ── PANEL ── */
+        .panel {
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 24px var(--shadow);
+        }
+
+        .panel-title {
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1.5px solid var(--border);
+        }
+
+        /* ── FORM ── */
+        .form-group { margin-bottom: 1rem; }
+
+        label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: #5b21b6;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.4rem;
+        }
+
+        select, textarea {
+            width: 100%;
+            background: var(--surface2);
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.88rem;
+            padding: 0.6rem 0.85rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237c6f9a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.85rem center;
+            padding-right: 2.2rem;
+            cursor: pointer;
+        }
+
+        textarea { resize: vertical; font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; line-height: 1.7; }
+
+        select:focus, textarea:focus {
+            border-color: #a78bfa;
+            box-shadow: 0 0 0 3px rgba(167,139,250,0.2);
+        }
+
+        .sample-info {
+            background: linear-gradient(135deg, #ede9fe, #dbeafe);
+            border: 1.5px solid #c4b5fd;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            display: none;
+        }
+
+        .sample-info.active { display: block; }
+        .sample-info strong { color: #5b21b6; display: block; margin-bottom: 0.25rem; font-size: 0.84rem; }
+        .sample-info p { color: #6d5fa0; margin: 0; font-size: 0.8rem; }
+
+        /* ── BUTTONS ── */
+        .actions { display: flex; gap: 0.6rem; margin-top: 1.1rem; }
+
+        .btn {
+            flex: 1;
+            padding: 0.65rem 1rem;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 0.9rem;
+            transition: all 0.18s;
+        }
+
+        .btn-analyze {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(124,58,237,0.35);
+        }
+        .btn-analyze:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(124,58,237,0.45); }
+        .btn-analyze:active { transform: translateY(0); }
+
+        .btn-clear {
+            background: #f5f3ff;
+            color: #7c6f9a;
+            border: 1.5px solid var(--border);
+        }
+        .btn-clear:hover { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+
+        /* ── RESULTS ── */
+        #output:empty::after {
+            content: 'Results will appear here \2728';
+            display: block;
+            text-align: center;
+            padding: 3.5rem 1rem;
+            color: var(--muted);
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: 2px dashed #d8d1f0;
+            border-radius: 20px;
+        }
+
+        .results-header {
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1.5px solid var(--border);
+        }
+
+        .result-card {
+            border-radius: 16px;
+            padding: 1.1rem 1.3rem;
+            margin-bottom: 0.9rem;
+            border: 1.5px solid;
+            animation: popIn 0.3s cubic-bezier(.34,1.56,.64,1) both;
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.96) translateY(6px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .result-card:nth-child(2) { animation-delay: 0.05s; }
+        .result-card:nth-child(3) { animation-delay: 0.10s; }
+        .result-card:nth-child(4) { animation-delay: 0.15s; }
+        .result-card:nth-child(5) { animation-delay: 0.20s; }
+
+        .card-dna  { background: var(--dna-bg);  border-color: var(--dna-border); }
+        .card-gc   { background: var(--gc-bg);   border-color: var(--gc-border);  }
+        .card-mrna { background: var(--mrna-bg); border-color: var(--mrna-border);}
+        .card-aa   { background: var(--aa-bg);   border-color: var(--aa-border);  }
+
+        .card-icon-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .card-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .card-dna  .card-icon { background: #bfdbfe; }
+        .card-gc   .card-icon { background: #fef08a; }
+        .card-mrna .card-icon { background: #a7f3d0; }
+        .card-aa   .card-icon { background: #ddd6fe; }
+
+        .card-label {
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .card-dna  .card-label { color: var(--dna-label);  }
+        .card-gc   .card-label { color: var(--gc-label);   }
+        .card-mrna .card-label { color: var(--mrna-label); }
+        .card-aa   .card-label { color: var(--aa-label);   }
+
+        .card-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.73rem;
+            line-height: 1.8;
+            word-break: break-all;
+        }
+
+        .card-dna  .card-value { color: var(--dna-text);  }
+        .card-mrna .card-value { color: var(--mrna-text); }
+
+        .gc-big {
+            font-family: 'Nunito', sans-serif;
+            font-size: 2.4rem;
+            font-weight: 900;
+            color: #92400e;
+            line-height: 1;
+        }
+
+        .gc-sub { font-size: 0.75rem; color: #a16207; margin-top: 4px; font-weight: 600; }
+
+        .gc-bar-track {
+            height: 10px;
+            background: rgba(202,138,4,0.15);
+            border-radius: 99px;
+            margin-top: 0.75rem;
+            overflow: hidden;
+        }
+
+        .gc-bar-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, #fbbf24, #f59e0b);
+            transition: width 0.8s cubic-bezier(.22,1,.36,1);
+        }
+
+        .hl-region {
+            color: #dc2626;
+            font-weight: 700;
+            background: #fee2e2;
+            border-radius: 3px;
+            padding: 0 2px;
+        }
+
+        /* amino acid pills */
+        .aa-grid { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 0.3rem; }
+
+        .aa-pill {
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            font-weight: 600;
+            border: 1.5px solid;
+            transition: transform 0.1s;
+        }
+        .aa-pill:hover { transform: scale(1.1); }
+
+        .aa-nonpolar { background: var(--pill-nonpolar-bg); border-color: var(--pill-nonpolar-border); color: var(--pill-nonpolar-text); }
+        .aa-polar    { background: var(--pill-polar-bg);    border-color: var(--pill-polar-border);    color: var(--pill-polar-text);    }
+        .aa-basic    { background: var(--pill-basic-bg);    border-color: var(--pill-basic-border);    color: var(--pill-basic-text);    }
+        .aa-acidic   { background: var(--pill-acidic-bg);   border-color: var(--pill-acidic-border);   color: var(--pill-acidic-text);   }
+        .aa-stop     { background: var(--pill-stop-bg);     border-color: var(--pill-stop-border);     color: var(--pill-stop-text);     }
+
+        .stop-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #92400e;
+            background: #fef3c7;
+            border: 1.5px solid #fcd34d;
+            border-radius: 8px;
+            padding: 2px 10px;
+        }
+
+        .aa-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 0.85rem;
+            padding-top: 0.75rem;
+            border-top: 1.5px solid rgba(167,139,250,0.25);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #6d5fa0;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .error-msg {
+            text-align: center;
+            padding: 1rem;
+            color: #dc2626;
+            font-weight: 700;
+            font-size: 0.9rem;
+            background: #fee2e2;
+            border: 1.5px solid #fca5a5;
+            border-radius: 12px;
+        }
+
+        /* ── HINT BOX ── */
+        .hint-box {
+            background: linear-gradient(135deg, #fdf4ff, #ede9fe);
+            border: 1.5px solid #ddd6fe;
+            border-radius: 14px;
+            padding: 1rem 1.1rem;
+            margin-top: 1rem;
+            font-size: 0.78rem;
+            line-height: 1.6;
+            color: #5b21b6;
+        }
+
+        .hint-box strong {
+            display: block;
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #7c3aed;
+            margin-bottom: 0.5rem;
+            font-weight: 800;
+        }
+
+        .hint-row { margin-bottom: 0.4rem; color: #6d5fa0; }
+        .hint-row b { color: #4c1d95; }
+
+        /* ── FOOTER ── */
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--muted);
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-top: 1.5px solid var(--border);
+            margin-top: 2rem;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 820px) {
+            main { grid-template-columns: 1fr; padding: 1rem; }
+            .header-inner { grid-template-columns: 1fr; }
+            .flow { display: none; }
+            header { padding: 1.5rem 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-inner">
+        <div>
+            <h1>Genetic <em>Code Decoder</em> 🧬</h1>
+            <div class="tagline">DNA → mRNA → Protein &nbsp;·&nbsp; Bioinformatics Project</div>
+            <div class="steps">
+                <div class="step-badge"><div class="step-num">1</div>Choose a sample or enter DNA</div>
+                <div class="step-badge"><div class="step-num">2</div>Click the Analyze button</div>
+            </div>
+        </div>
+        <div class="flow">
+            <div class="flow-box dns">DNA<div class="flow-sub">ATGC</div></div>
+            <div class="flow-arrow"></div>
+            <div class="flow-box mrna">mRNA<div class="flow-sub">AUGC</div></div>
+            <div class="flow-arrow"></div>
+            <div class="flow-box protein">Protein<div class="flow-sub">AA chain</div></div>
+        </div>
+    </div>
+</header>
+
+<main>
+    <!-- LEFT: controls -->
+    <div>
+        <div class="panel">
+            <div class="panel-title">Input</div>
+
+            <div class="form-group">
+                <label for="preset">Choose a sample gene</label>
+                <select id="preset" onchange="loadPreset()">
+                    <option value="">— Choose one —</option>
+                    <option value="custom">Custom DNA (paste your own)</option>
+                    <option value="minta_01">Rock Dragon (Draco petraeus)</option>
+                    <option value="minta_02">Zombie Virus (Necrovirus cerebri)</option>
+                    <option value="minta_03">Cosmic Space Jellyfish (Medusa galactica)</option>
+                    <option value="minta_04">Invisible Swamp Goblin (Goblinus invisibilis)</option>
+                </select>
+            </div>
+
+            <div id="sample_info" class="sample-info"></div>
+
+            <div class="form-group">
+                <label for="dna_input">DNA sequence (ATGC only)</label>
+                <textarea id="dna_input" rows="7" placeholder="E.g. ATGAAATTTCCC..."></textarea>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-analyze" onclick="analyze()">Analyze</button>
+                <button class="btn btn-clear" onclick="clearAll()">Clear</button>
+            </div>
+        </div>
+
+        <div class="hint-box">
+            <strong>How does it work?</strong>
+            <div class="hint-row"><b>DNA to mRNA:</b> T bases are replaced with U.</div>
+            <div class="hint-row"><b>Translation:</b> From the first AUG (Start) codon, every 3 bases, until a Stop codon.</div>
+            <div class="hint-row"><b>GC content:</b> The percentage of G and C bases.</div>
+        </div>
+    </div>
+
+    <!-- RIGHT: results -->
+    <div id="output"></div>
+</main>
+
+<footer>Genetic Code Decoder — Bioinformatics Project</footer>
+
+<script>
+    const SAMPLES = {
+        minta_01: { nev: 'Rock Dragon (Draco petraeus)', leiras: 'The gene for the scale-hardening enzyme. This protein helps the dragon’s skin withstand volcanic heat.', dns: 'GCATCGTAGCTAGCCGATGCGCTACGGCTGGCAGTTTGACGTGAACAAATAACGATCGATCGACT' },
+        minta_02: { nev: 'Zombie Virus (Necrovirus cerebri)', leiras: 'The dreaded brain-eating protein. This peptide takes control of the infected host’s nervous system.', dns: 'TTCGACCGGTCAAATGGACGAGGGGTTTTCTATACCTAGACCTGTCGTGTAGCCTGCATGC' },
+        minta_03: { nev: 'Cosmic Space Jellyfish (Medusa galactica)', leiras: 'Astro-fluorescent protein. It allows the organism to glow in interstellar darkness when exposed to gamma radiation.', dns: 'ATATACGCGCGATGAAACCCGGGTTTACCGCCTGTAGCTATCACTGATTTAAACCCGGG' },
+        minta_04: { nev: 'Invisible Swamp Goblin (Goblinus invisibilis)', leiras: 'A segment of the light-refracting enzyme. The protein’s special structure bends visible light, providing optical camouflage.', dns: 'CTCGATCGATATGACCTGCCCATACTACTTTAACCAGGGCATCTAAAGGCATCGTACG' }
+    };
+
+    const CODON_TABLE = {
+        'UUU':'Phe','UUC':'Phe','UUA':'Leu','UUG':'Leu',
+        'UCU':'Ser','UCC':'Ser','UCA':'Ser','UCG':'Ser',
+        'UAU':'Tyr','UAC':'Tyr','UAA':'STOP','UAG':'STOP',
+        'UGU':'Cys','UGC':'Cys','UGA':'STOP','UGG':'Trp',
+        'CUU':'Leu','CUC':'Leu','CUA':'Leu','CUG':'Leu',
+        'CCU':'Pro','CCC':'Pro','CCA':'Pro','CCG':'Pro',
+        'CAU':'His','CAC':'His','CAA':'Gln','CAG':'Gln',
+        'CGU':'Arg','CGC':'Arg','CGA':'Arg','CGG':'Arg',
+        'AUU':'Ile','AUC':'Ile','AUA':'Ile','AUG':'Met',
+        'ACU':'Thr','ACC':'Thr','ACA':'Thr','ACG':'Thr',
+        'AAU':'Asn','AAC':'Asn','AAA':'Lys','AAG':'Lys',
+        'AGU':'Ser','AGC':'Ser','AGA':'Arg','AGG':'Arg',
+        'GUU':'Val','GUC':'Val','GUA':'Val','GUG':'Val',
+        'GCU':'Ala','GCC':'Ala','GCA':'Ala','GCG':'Ala',
+        'GAU':'Asp','GAC':'Asp','GAA':'Glu','GAG':'Glu',
+        'GGU':'Gly','GGC':'Gly','GGA':'Gly','GGG':'Gly'
+    };
+
+    const AA_GROUPS = {
+        nonpolar: ['Ala','Val','Leu','Ile','Pro','Phe','Trp','Met','Gly'],
+        polar:    ['Ser','Thr','Cys','Tyr','Asn','Gln'],
+        basic:    ['Lys','Arg','His'],
+        acidic:   ['Asp','Glu']
+    };
+
+    function aaClass(aa) {
+        if (AA_GROUPS.nonpolar.includes(aa)) return 'aa-nonpolar';
+        if (AA_GROUPS.polar.includes(aa))    return 'aa-polar';
+        if (AA_GROUPS.basic.includes(aa))    return 'aa-basic';
+        if (AA_GROUPS.acidic.includes(aa))   return 'aa-acidic';
+        return 'aa-stop';
+    }
+
+    function sanitizeDna(seq) { return seq.toUpperCase().replace(/[^ATGC]/g, ''); }
+
+    function gcContent(seq) {
+        if (!seq) return 0;
+        const g = (seq.match(/G/g) || []).length;
+        const c = (seq.match(/C/g) || []).length;
+        return ((g + c) / seq.length * 100).toFixed(1);
+    }
+
+    function dnaToMrna(dna) { return dna.replace(/T/g, 'U'); }
+
+    function translate(mrna) {
+        const start = mrna.indexOf('AUG');
+        if (start === -1) return { aa: [], region: null, stopCodon: null };
+        const aa = [];
+        let pos = start;
+        while (pos + 3 <= mrna.length) {
+            const codon = mrna.substring(pos, pos + 3);
+            const name = CODON_TABLE[codon] || '???';
+            if (name === 'STOP') return { aa, region: { start, end: pos + 3 }, stopCodon: codon };
+            aa.push(name);
+            pos += 3;
+        }
+        return { aa, region: { start, end: pos }, stopCodon: null };
+    }
+
+    function loadPreset() {
+        const val  = document.getElementById('preset').value;
+        const ta   = document.getElementById('dna_input');
+        const info = document.getElementById('sample_info');
+        if (!val) {
+            ta.value = ''; info.className = 'sample-info'; info.innerHTML = ''; return;
+        }
+        if (val === 'custom') {
+            ta.value = ''; info.className = 'sample-info active';
+            info.innerHTML = '<strong>Custom DNA mode</strong><p>Paste your own sequence (ATGC characters only).</p>'; return;
+        }
+        const s = SAMPLES[val];
+        if (s) {
+            ta.value = s.dns;
+            info.className = 'sample-info active';
+            info.innerHTML = '<strong>' + s.nev + '</strong><p>' + s.leiras + '</p>';
+        }
+    }
+
+    function analyze() {
+        const raw = document.getElementById('dna_input').value || '';
+        const dna = sanitizeDna(raw);
+        const out = document.getElementById('output');
+
+        if (!dna) {
+            out.innerHTML = '<p class="error-msg">Please enter a DNA sequence!</p>';
+            return;
+        }
+
+        const gc   = gcContent(dna);
+        const mrna = dnaToMrna(dna);
+        const res  = translate(mrna);
+        const { aa, region, stopCodon } = res;
+
+        let displayMrna = mrna;
+        if (region) {
+            const pre  = mrna.substring(0, region.start);
+            const hl   = mrna.substring(region.start, region.end);
+            const post = mrna.substring(region.end);
+            displayMrna = pre + '<span class="hl-region">' + hl + '</span>' + post;
+        }
+
+        let aaContent = '';
+        if (aa.length > 0) {
+            const pills = aa.map(function(a) { return '<span class="aa-pill ' + aaClass(a) + '">' + a + '</span>'; }).join('');
+            const stopEl = stopCodon ? '<div><span class="stop-label">Stop: ' + stopCodon + '</span></div>' : '';
+            aaContent = '<div class="aa-grid">' + pills + '</div>' + stopEl +
+                '<div class="aa-legend">' +
+                '<div class="legend-item"><div class="legend-dot" style="background:#c4b5fd"></div>Nonpolar</div>' +
+                '<div class="legend-item"><div class="legend-dot" style="background:#6ee7b7"></div>Polar</div>' +
+                '<div class="legend-item"><div class="legend-dot" style="background:#93c5fd"></div>Basic</div>' +
+                '<div class="legend-item"><div class="legend-dot" style="background:#fca5a5"></div>Acidic</div>' +
+                '</div>';
+        } else {
+            aaContent = '<span style="color:#7c6f9a;font-size:0.82rem;font-weight:600;">(no Start/AUG codon, or the sequence is too short)</span>';
+        }
+
+        const gNum = (dna.match(/G/g)||[]).length;
+        const cNum = (dna.match(/C/g)||[]).length;
+
+        out.innerHTML =
+            '<div class="results-header">Analysis Results</div>' +
+
+            '<div class="result-card card-dna">' +
+              '<div class="card-icon-label"><div class="card-icon">&#x1F535;</div><div class="card-label">DNA Sequence &nbsp;&middot;&nbsp; ' + dna.length + ' bases</div></div>' +
+              '<div class="card-value">' + dna + '</div>' +
+            '</div>' +
+
+            '<div class="result-card card-gc">' +
+              '<div class="card-icon-label"><div class="card-icon">&#x1F7E1;</div><div class="card-label">GC Content</div></div>' +
+              '<div class="gc-big">' + gc + '<span style="font-size:1.1rem;font-weight:700;color:#a16207;">%</span></div>' +
+              '<div class="gc-sub">G: ' + gNum + ' &nbsp;&middot;&nbsp; C: ' + cNum + ' &nbsp;&middot;&nbsp; total ' + (gNum+cNum) + ' / ' + dna.length + ' bases</div>' +
+              '<div class="gc-bar-track"><div class="gc-bar-fill" style="width:' + gc + '%"></div></div>' +
+            '</div>' +
+
+            '<div class="result-card card-mrna">' +
+              '<div class="card-icon-label"><div class="card-icon">&#x1F7E2;</div><div class="card-label">mRNA (T to U) &nbsp;&middot;&nbsp; coding region highlighted</div></div>' +
+              '<div class="card-value">' + displayMrna + '</div>' +
+            '</div>' +
+
+            '<div class="result-card card-aa">' +
+              '<div class="card-icon-label"><div class="card-icon">&#x1F7E3;</div><div class="card-label">Amino Acid Sequence &nbsp;&middot;&nbsp; ' + aa.length + ' amino acids</div></div>' +
+              aaContent +
+            '</div>';
+
+        out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function clearAll() {
+        document.getElementById('output').innerHTML = '';
+        document.getElementById('dna_input').value = '';
+        document.getElementById('sample_info').className = 'sample-info';
+        document.getElementById('sample_info').innerHTML = '';
+        document.getElementById('preset').value = '';
+    }
+</script>
+</body>
+</html>
